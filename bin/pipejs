@@ -1,0 +1,210 @@
+#!/usr/bin/env node
+
+/**
+ * PipeJS CLI Entry Point
+ * 
+ * This file serves as the main executable for the PipeJS command-line interface.
+ * It handles ESM module loading, error handling, and bootstrap configuration.
+ */
+
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+
+// Error handling for module loading failures
+const handleModuleError = (error) => {
+  if (error.code === 'MODULE_NOT_FOUND') {
+    console.error(`
+PipeJS - Module Loading Error
+
+The required dependencies are not installed. Please run:
+
+npm install
+
+If you're developing PipeJS, make sure to build the project first:
+
+npm run build
+
+Error details: ${error.message}
+    `);
+    process.exit(1);
+  }
+  
+  console.error(`
+PipeJS - Unexpected Error
+
+An unexpected error occurred while starting PipeJS:
+
+${error.message}
+
+This might be a bug in PipeJS. Please report this issue at:
+https://github.com/pipejs/pipejs/issues
+
+Stack trace:
+${error.stack}
+  `);
+  process.exit(1);
+};
+
+// Check if we're running from source or built distribution
+const isRunningFromSource = () => {
+  try {
+    const require = createRequire(import.meta.url);
+    const sourcePath = require.resolve('../src/cli/index.js');
+    return sourcePath.includes('/src/');
+  } catch {
+    return false;
+  }
+};
+
+// Load configuration from package.json
+const loadPackageInfo = () => {
+  try {
+    const require = createRequire(import.meta.url);
+    const packagePath = require.resolve('../package.json');
+    return JSON.parse(readFileSync(packagePath, 'utf8'));
+  } catch (error) {
+    console.warn('Could not load package.json:', error.message);
+    return { name: 'pipejs', version: '0.0.0' };
+  }
+};
+
+// Check Node.js version
+const checkNodeVersion = () => {
+  const currentNode = process.versions.node;
+  const majorVersion = parseInt(currentNode.split('.')[0], 10);
+  
+  if (majorVersion < 18) {
+    console.error(`
+PipeJS - Unsupported Node.js Version
+
+PipeJS requires Node.js 18.0.0 or higher. 
+Current version: ${currentNode}
+
+Please upgrade your Node.js version:
+https://nodejs.org/en/download/
+    `);
+    process.exit(1);
+  }
+};
+
+// Set up unhandled error handlers
+const setupErrorHandlers = () => {
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error(`
+PipeJS - Unhandled Promise Rejection
+
+This might indicate a bug in PipeJS or one of its plugins.
+
+Promise: ${promise}
+Reason: ${reason}
+
+The process will continue, but this should be investigated.
+    `);
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error(`
+PipeJS - Uncaught Exception
+
+A critical error occurred that PipeJS cannot recover from:
+
+${error.message}
+
+Stack trace:
+${error.stack}
+
+PipeJS will now exit.
+    `);
+    process.exit(1);
+  });
+
+  // Handle SIGINT (Ctrl+C) gracefully
+  process.on('SIGINT', () => {
+    console.log('\n\nPipeJS - Received shutdown signal');
+    console.log('Thank you for using PipeJS!');
+    process.exit(0);
+  });
+
+  // Handle SIGTERM gracefully
+  process.on('SIGTERM', () => {
+    console.log('\n\nPipeJS - Received termination signal');
+    console.log('Shutting down gracefully...');
+    process.exit(0);
+  });
+};
+
+// Main bootstrap function
+const bootstrap = async () => {
+  try {
+    // Check Node.js version first
+    checkNodeVersion();
+    
+    // Set up error handlers
+    setupErrorHandlers();
+    
+    // Load package info
+    const packageInfo = loadPackageInfo();
+    
+    // Show banner in development mode or when verbose
+    if (process.env.NODE_ENV === 'development' || process.argv.includes('--verbose')) {
+      console.log(`
+-----------------------------------------
+  PipeJS - Data Pipeline Orchestrator
+  Version: ${packageInfo.version}
+  Node.js: ${process.versions.node}
+-----------------------------------------
+      `);
+    }
+
+    // Determine the entry point based on whether we're running from source or dist
+    let cliEntryPoint;
+    
+    if (isRunningFromSource()) {
+      // Running from source - use TypeScript entry with tsx
+      try {
+        const { register } = await import('tsx');
+        register();
+        cliEntryPoint = '../src/cli/index.js';
+      } catch (error) {
+        console.error(`
+PipeJS - Development Setup Required
+
+Running from source requires additional dependencies.
+
+Please install development dependencies:
+
+npm install --include=dev
+
+Or build the project first:
+
+npm run build
+
+Error: ${error.message}
+        `);
+        process.exit(1);
+      }
+    } else {
+      // Running from built distribution
+      cliEntryPoint = '../dist/cli/index.js';
+    }
+
+    // Import and run the CLI
+    const cliModule = await import(cliEntryPoint);
+    
+    if (typeof cliModule.runCLI === 'function') {
+      await cliModule.runCLI();
+    } else {
+      throw new Error('CLI module does not export runCLI function');
+    }
+
+  } catch (error) {
+    handleModuleError(error);
+  }
+};
+
+// Start the application
+bootstrap();

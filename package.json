@@ -1,0 +1,44 @@
+{
+  "name": "pipejs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A lightweight, extensible pipeline orchestrator for data processing workflows",
+  "bin": {
+    "pipejs": "./bin/pipejs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli/index.ts",
+    "start": "node bin/pipejs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "js-yaml": "^4.1.0",
+    "node-cron": "^3.0.3",
+    "sqlite3": "^5.1.6",
+    "uuid": "^9.0.1",
+    "vm2": "^3.9.19"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^20.19.23",
+    "@types/uuid": "^9.0.7",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "pipeline",
+    "orchestrator",
+    "workflow",
+    "data-processing",
+    "automation"
+  ]
+}
