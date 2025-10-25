@@ -1,6 +1,6 @@
 # PipeJS - Data Pipeline Orchestrator
 
-![PipeJS Pipeline](https://via.placeholder.com/800x400/4F46E5/FFFFFF?text=PipeJS+-+Data+Pipeline+Orchestration)
+![PipeJS Pipeline](./src/assets/pipejs.png)
 
 ## What is PipeJS?
 
